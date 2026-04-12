@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charts - Student Portfolio</title>
+    <link rel="stylesheet" href="cardstyle.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <div class="brand">
+                <span class="brand-mark">U</span>
+                <div>
+                    <p class="eyebrow">Analytics</p>
+                    <h1>Chart Dashboard</h1>
+                </div>
+            </div>
+            <nav class="main-nav" aria-label="Primary navigation">
+                <a href="card.html">Portfolio</a>
+                <a href="login.html">Login</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="section-block">
+        <div class="container section-heading">
+            <span class="section-label">Reports</span>
+            <h2>Student and message analytics</h2>
+        </div>
+        <div class="container chart-summary">
+            <div class="chart-card">
+                <h3>Weekly Activity</h3>
+                <canvas id="activityChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Full Overview</h3>
+                <canvas id="overviewChart"></canvas>
+            </div>
+        </div>
+        <div class="container chart-footer">
+            <a href="card.html" class="btn btn-secondary">Back to portfolio</a>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="chart.js"></script>
+</body>
+</html>

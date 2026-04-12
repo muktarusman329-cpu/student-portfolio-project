@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Student Portfolio</title>
+    <script src="https://kit.fontawesome.com/02737ca17b.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="cardstyle.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <div class="brand">
+                <span class="brand-mark">U</span>
+                <div>
+                    <p class="eyebrow">University Student</p>
+                    <h1>Muktar Usman</h1>
+                </div>
+            </div>
+            <nav class="main-nav" aria-label="Primary navigation" id="mainNav">
+                <a href="#hero">Home</a>
+                <a href="#about">About</a>
+                <a href="#projects">Projects</a>
+                <a href="chart.html">Charts</a>
+                <a href="login.html">Login</a>
+            </nav>
+            <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="mainNav" aria-label="Toggle navigation">
+                <span class="fa fa-bars"></span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero" class="hero">
+            <div class="container hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">Information Technology Major</p>
+                    <h2>Building modern apps for campus life and student success.</h2>
+                    <p>I'm a university student creating polished digital experiences, academic tools, and collaborative student projects.</p>
+                    <div class="hero-actions">
+                        <a href="#projects" class="btn btn-primary">View Projects</a>
+                        <a href="#contact" class="btn btn-secondary">Contact Me</a>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <strong>4.0</strong>
+                            <span>GPA</span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>6+</strong>
+                            <span>Projects</span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>Tech Club</strong>
+                            <span>Leader</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="ChatGPT Image Apr 12, 2026, 04_41_52 PM.png" alt="Student working on laptop">
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="section-block">
+            <div class="container section-heading">
+                <span class="section-label">About Me</span>
+                <h2>Focused on learning, leadership, and impact.</h2>
+            </div>
+            <div class="container cards-grid">
+                <article class="info-card">
+                    <h3>Academic Focus</h3>
+                    <p>Pursuing a B.Sc. in Information Technology at Federal University of Technology Minna with coursework in algorithms, UI design, and data-driven development.</p>
+                </article>
+                <article class="info-card">
+                    <h3>Technical Skills</h3>
+                    <p>HTML, CSS, JavaScript, React, responsive design, collaboration, and accessible student experiences.</p>
+                </article>
+                <article class="info-card">
+                    <h3>Campus Experience</h3>
+                    <p>Student ambassador, study group lead, and project coordinator for hackathons and campus initiatives.</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="assistant" class="section-block assistant-section">
+            <div class="container section-heading">
+                <span class="section-label">AI Assistant</span>
+                <h2>Ask the site about my work and campus projects.</h2>
+            </div>
+            <div class="container assistant-grid">
+                <div class="assistant-card">
+                    <div class="assistant-header">
+                        <h3>Voice-enabled chat</h3>
+                        <p>Ask questions and get spoken answers about skills, projects, and university experience.</p>
+                    </div>
+                    <div class="chat-window" id="chatWindow"></div>
+                    <div class="chat-input-row">
+                        <input id="assistantInput" type="text" placeholder="Ask about my skills, studies, or campus work" />
+                        <button type="button" id="voiceBtn" class="btn btn-secondary">Voice</button>
+                        <button type="button" id="sendBtn" class="btn btn-primary">Ask</button>
+                    </div>
+                </div>
+                <div class="assistant-card">
+                    <h3>Dashboard</h3>
+                    <div id="userInfo">
+                        <p>Not signed in. <a href="login.html">Login here</a></p>
+                        <button type="button" id="logoutBtn" class="btn btn-secondary hidden">Logout</button>
+                    </div>
+                    <div class="status-board">
+                        <div class="status-card">
+                            <strong id="messageCount">0</strong>
+                            <span>Messages</span>
+                        </div>
+                        <div class="status-card">
+                            <strong id="userCount">0</strong>
+                            <span>Users</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="projects" class="section-block">
+            <div class="container section-heading">
+                <span class="section-label">Portfolio</span>
+                <h2>Recent student projects</h2>
+            </div>
+            <div class="container projects-grid">
+                <article class="project-card">
+                    <img src="representation-user-experience-interface-design (2).jpg" alt="Course planner app" class="project-image">
+                    <div class="project-body">
+                        <h3>Course Planner</h3>
+                                        <p>A responsive web app to organize semester coursework, deadlines, and study sessions with intuitive UX.</p>
+                                        <p class="project-meta">HTML<i class="fab fa-html5"></i> CSS <i class="fab fa-css3-alt"></i> JavaScript</p>
+                                    </div>
+                </article>
+                <article class="project-card">
+                    <img src="freepik_assistant_1776009213430.png" alt="Campus event site" class="project-image">
+                    <div class="project-body">
+                        <h3>Campus Event Hub</h3>
+                        <p>Designed an information portal for student events, volunteer sign-ups, and club announcements.</p>
+                        <p class="project-meta">React <i class="fab fa-react"></i> UI Design <i class="fas fa-paint-brush"></i> Accessibility</p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section id="contact" class="section-block">
+            <div class="container section-heading">
+                <span class="section-label">Get in Touch</span>
+                <h2>Let's collaborate on your next idea.</h2>
+            </div>
+            <div class="container contact-grid">
+                <div class="contact-card">
+                    <h3>Contact</h3>
+                    <p><i class="fas fa-envelope"></i>Email: <a href="mailto:muktarusman329@gmail.com">muktarusman329@gmail.com</a></p>
+                    <p><i class="fab fa-linkedin"></i>LinkedIn: <a href="#">linkedin.com/in/student</a></p>
+                    <p>Open to internships, student research, and campus partnerships.</p>
+                </div>
+                <div class="contact-card contact-form-card">
+                    <h3>Send a message</h3>
+                    <form id="contactForm">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" placeholder="Your name" required>
+
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="Your email" required>
+
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" rows="5" placeholder="Tell me about your project" required></textarea>
+
+                        <button type="submit" class="btn btn-primary">Send message</button>
+                        <p class="form-status" id="formStatus" aria-live="polite"></p>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-inner">
+            <p>@2026 University Student Portfolio. Designed for campus success.</p>
+        </div>
+    </footer>
+    <script src="script.js"></script>
+    <script src="chat.js"></script>
+</body>
+</html>
