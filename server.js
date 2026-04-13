@@ -7,26 +7,50 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const dataDir = path.join(__dirname, 'data');
 
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+const ensureDataDir = () => {
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+  } catch (error) {
+    console.error('Unable to create data directory:', error);
+    process.exit(1);
+  }
+};
+
+ensureDataDir();
 
 const loadData = (fileName, fallback) => {
   const filePath = path.join(dataDir, fileName);
+
   if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(fallback, null, 2));
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(fallback, null, 2));
+    } catch (error) {
+      console.error(`Unable to create ${fileName}:`, error);
+    }
     return fallback;
   }
 
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8')) || fallback;
   } catch (error) {
+    console.error(`Invalid JSON in ${fileName}, resetting to fallback:`, error);
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(fallback, null, 2));
+    } catch (writeError) {
+      console.error(`Unable to reset ${fileName}:`, writeError);
+    }
     return fallback;
   }
 };
 
 const saveData = (fileName, data) => {
-  fs.writeFileSync(path.join(dataDir, fileName), JSON.stringify(data, null, 2));
+  try {
+    fs.writeFileSync(path.join(dataDir, fileName), JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error(`Failed to save ${fileName}:`, error);
+  }
 };
 
 const users = loadData('users.json', [
@@ -223,6 +247,20 @@ app.get('/api/messages', (req, res) => {
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found.' });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled request error:', err);
+  res.status(500).json({ error: 'Internal server error.' });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+  process.exit(1);
 });
 
 const startServer = (port) => {
