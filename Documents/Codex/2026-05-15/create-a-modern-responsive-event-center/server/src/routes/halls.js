@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { body, query, validationResult } from "express-validator";
-import { halls } from "../data/dummyData.js";
+import { slugify } from "../db.js";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
+import { Hall } from "../models/Hall.js";
 import { broadcast } from "../realtime.js";
 
 export const hallRouter = Router();
@@ -12,14 +13,27 @@ const validate = (request, response, next) => {
   return next();
 };
 
-hallRouter.get("/", query("capacity").optional().isInt({ min: 1 }), validate, (request, response) => {
-  const search = String(request.query.search || "").toLowerCase();
-  const minCapacity = Number(request.query.capacity || 0);
-  const results = halls.filter((hall) => {
-    const searchable = `${hall.name} ${hall.location} ${hall.features.join(" ")}`.toLowerCase();
-    return searchable.includes(search) && hall.capacity >= minCapacity;
-  });
-  response.json(results);
+const serializeHall = (hall) => hall.toJSON();
+
+hallRouter.get("/", query("capacity").optional().isInt({ min: 1 }), validate, async (request, response, next) => {
+  try {
+    const search = String(request.query.search || "").trim();
+    const minCapacity = Number(request.query.capacity || 0);
+    const filter = { capacity: { $gte: minCapacity } };
+
+    if (search) {
+      filter.$or = [
+        { name: new RegExp(search, "i") },
+        { location: new RegExp(search, "i") },
+        { features: new RegExp(search, "i") }
+      ];
+    }
+
+    const halls = await Hall.find(filter).sort({ createdAt: 1 });
+    response.json(halls.map(serializeHall));
+  } catch (error) {
+    next(error);
+  }
 });
 
 hallRouter.post(
@@ -31,26 +45,48 @@ hallRouter.post(
   body("pricePerDay").isInt({ min: 1 }),
   body("location").trim().isLength({ min: 2 }),
   validate,
-  (request, response) => {
-    const hall = { id: request.body.id || request.body.name.toLowerCase().replace(/\W+/g, "-"), ...request.body, bookedDates: [] };
-    halls.push(hall);
-    broadcast("hall.created", { hall, halls });
-    response.status(201).json(hall);
+  async (request, response, next) => {
+    try {
+      const hall = await Hall.create({
+        slug: request.body.id || slugify(request.body.name),
+        name: request.body.name,
+        capacity: request.body.capacity,
+        pricePerDay: request.body.pricePerDay,
+        location: request.body.location,
+        features: request.body.features || [],
+        availabilityStatus: request.body.availabilityStatus || "Available",
+        bookedDates: [],
+        imageUrl: request.body.imageUrl
+      });
+      const halls = await Hall.find().sort({ createdAt: 1 });
+      broadcast("hall.created", { hall: serializeHall(hall), halls: halls.map(serializeHall) });
+      response.status(201).json(serializeHall(hall));
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
-hallRouter.put("/:id", requireAuth, requireAdmin, (request, response) => {
-  const index = halls.findIndex((hall) => hall.id === request.params.id);
-  if (index === -1) return response.status(404).json({ message: "Hall not found" });
-  halls[index] = { ...halls[index], ...request.body };
-  broadcast("hall.updated", { hall: halls[index], halls });
-  response.json(halls[index]);
+hallRouter.put("/:id", requireAuth, requireAdmin, async (request, response, next) => {
+  try {
+    const hall = await Hall.findOneAndUpdate({ slug: request.params.id }, request.body, { new: true });
+    if (!hall) return response.status(404).json({ message: "Hall not found" });
+    const halls = await Hall.find().sort({ createdAt: 1 });
+    broadcast("hall.updated", { hall: serializeHall(hall), halls: halls.map(serializeHall) });
+    response.json(serializeHall(hall));
+  } catch (error) {
+    next(error);
+  }
 });
 
-hallRouter.delete("/:id", requireAuth, requireAdmin, (request, response) => {
-  const index = halls.findIndex((hall) => hall.id === request.params.id);
-  if (index === -1) return response.status(404).json({ message: "Hall not found" });
-  const [removed] = halls.splice(index, 1);
-  broadcast("hall.deleted", { hall: removed, halls });
-  response.json(removed);
+hallRouter.delete("/:id", requireAuth, requireAdmin, async (request, response, next) => {
+  try {
+    const hall = await Hall.findOneAndDelete({ slug: request.params.id });
+    if (!hall) return response.status(404).json({ message: "Hall not found" });
+    const halls = await Hall.find().sort({ createdAt: 1 });
+    broadcast("hall.deleted", { hall: serializeHall(hall), halls: halls.map(serializeHall) });
+    response.json(serializeHall(hall));
+  } catch (error) {
+    next(error);
+  }
 });

@@ -10,4 +10,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.set("toJSON", {
+  transform(_doc, ret) {
+    ret.id = String(ret._id);
+    delete ret._id;
+    delete ret.passwordHash;
+    delete ret.__v;
+    return ret;
+  }
+});
+
 export const User = mongoose.models.User || mongoose.model("User", userSchema);

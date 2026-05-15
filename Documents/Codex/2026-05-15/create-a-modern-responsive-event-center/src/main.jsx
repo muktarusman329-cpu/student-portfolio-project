@@ -122,6 +122,7 @@ function App() {
   const [selectedHall, setSelectedHall] = useState(fallbackHalls[0].id);
   const [session, setSession] = useState(() => JSON.parse(localStorage.getItem("elite-session") || "null"));
   const [notice, setNotice] = useState("Live connection starting...");
+  const [path, setPath] = useState(window.location.pathname);
   const [confirmation, setConfirmation] = useState(null);
   const [form, setForm] = useState({
     name: "",
@@ -138,6 +139,12 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
+
+  useEffect(() => {
+    const onPopState = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     refreshPublicData();
@@ -198,6 +205,7 @@ function App() {
     localStorage.setItem("elite-session", JSON.stringify({ user: data.user }));
     setSession({ user: data.user });
     setNotice(`Logged in as ${data.user.role}`);
+    if (data.user.role === "admin") navigate("/admin");
   };
 
   const logout = () => {
@@ -207,6 +215,13 @@ function App() {
     setBookings([]);
     setOverview(null);
     setNotice("Logged out");
+    navigate("/");
+  };
+
+  const navigate = (target) => {
+    window.history.pushState({}, "", target);
+    setPath(window.location.pathname);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const toggleService = (service) => {
@@ -271,20 +286,25 @@ function App() {
 
   return (
     <div className="min-h-screen bg-pearl text-ink transition-colors duration-500 dark:bg-ink dark:text-pearl">
-      <Nav dark={dark} setDark={setDark} menuOpen={menuOpen} setMenuOpen={setMenuOpen} session={session} logout={logout} />
+      <Nav dark={dark} setDark={setDark} menuOpen={menuOpen} setMenuOpen={setMenuOpen} session={session} logout={logout} navigate={navigate} path={path} />
       <LiveNotice notice={notice} />
-      <main>
-        <Hero />
-        <Venues filteredHalls={filteredHalls} query={query} setQuery={setQuery} capacity={capacity} setCapacity={setCapacity} setSelectedHall={setSelectedHall} />
-        <Booking form={form} setForm={setForm} activeHall={activeHall} halls={halls} selectedHall={selectedHall} setSelectedHall={setSelectedHall} toggleService={toggleService} submitBooking={submitBooking} confirmation={confirmation} />
-        <CalendarView halls={halls} />
-        <Gallery />
-        <Pricing />
-        <Testimonials />
-        <AdminGate session={session} login={login} logout={logout} bookings={bookings} totalRevenue={totalRevenue} overview={overview} updateBooking={updateBooking} halls={halls} addHall={addHall} deleteHall={deleteHall} />
-        <Contact />
-      </main>
-      <SupportWidget />
+      {path === "/admin" ? (
+        <main>
+          <AdminGate session={session} login={login} logout={logout} bookings={bookings} totalRevenue={totalRevenue} overview={overview} updateBooking={updateBooking} halls={halls} addHall={addHall} deleteHall={deleteHall} />
+        </main>
+      ) : (
+        <main>
+          <Hero />
+          <Venues filteredHalls={filteredHalls} query={query} setQuery={setQuery} capacity={capacity} setCapacity={setCapacity} setSelectedHall={setSelectedHall} />
+          <Booking form={form} setForm={setForm} activeHall={activeHall} halls={halls} selectedHall={selectedHall} setSelectedHall={setSelectedHall} toggleService={toggleService} submitBooking={submitBooking} confirmation={confirmation} />
+          <CalendarView halls={halls} />
+          <Gallery />
+          <Pricing />
+          <Testimonials />
+          <Contact />
+        </main>
+      )}
+      {path !== "/admin" && <SupportWidget />}
       <Footer />
     </div>
   );
@@ -294,29 +314,33 @@ function LiveNotice({ notice }) {
   return <div className="fixed bottom-5 left-5 z-50 rounded-full border border-white/15 bg-ink/85 px-4 py-2 text-xs font-semibold text-white shadow-glow backdrop-blur">{notice}</div>;
 }
 
-function Nav({ dark, setDark, menuOpen, setMenuOpen, session, logout }) {
+function Nav({ dark, setDark, menuOpen, setMenuOpen, session, logout, navigate, path }) {
   const links = ["Home", "Venues", "Booking", "Gallery", "Pricing", "About", "Contact"];
+  const goHome = (hash = "") => {
+    if (path !== "/") navigate(`/${hash}`);
+  };
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-ink/70 text-white backdrop-blur-xl">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <a href="#home" className="flex items-center gap-3">
+        <a href="/#home" onClick={(event) => { event.preventDefault(); navigate("/#home"); }} className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-champagne text-ink shadow-glow"><Sparkles size={19} /></span>
           <span className="font-display text-xl font-semibold">Elite Event Hub</span>
         </a>
         <div className="hidden items-center gap-7 lg:flex">
-          {links.map((link) => <a className="text-sm text-white/78 transition hover:text-champagne" href={`#${link.toLowerCase()}`} key={link}>{link}</a>)}
-          <a className="text-sm text-white/78 transition hover:text-champagne" href="#admin">Admin</a>
+          {links.map((link) => <a className="text-sm text-white/78 transition hover:text-champagne" href={`/#${link.toLowerCase()}`} onClick={() => goHome(`#${link.toLowerCase()}`)} key={link}>{link}</a>)}
+          {session?.user?.role === "admin" && <a className="text-sm text-champagne transition hover:text-white" href="/admin" onClick={(event) => { event.preventDefault(); navigate("/admin"); }}>Dashboard</a>}
         </div>
         <div className="flex items-center gap-2">
           <button className="icon-button" onClick={() => setDark(!dark)} aria-label="Toggle dark mode">{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
-          {session ? <button onClick={logout} className="hidden rounded-full border border-white/20 px-4 py-2 text-sm sm:inline-flex">Logout</button> : <a href="#admin" className="hidden rounded-full border border-white/20 px-4 py-2 text-sm sm:inline-flex">Admin Login</a>}
-          <a href="#booking" className="hidden rounded-full bg-champagne px-5 py-2.5 text-sm font-semibold text-ink shadow-glow transition hover:scale-[1.02] sm:inline-flex">Reserve</a>
+          {session?.user?.role === "admin" && <button onClick={logout} className="hidden rounded-full border border-white/20 px-4 py-2 text-sm sm:inline-flex">Logout</button>}
+          <a href="/#booking" onClick={() => goHome("#booking")} className="hidden rounded-full bg-champagne px-5 py-2.5 text-sm font-semibold text-ink shadow-glow transition hover:scale-[1.02] sm:inline-flex">Reserve</a>
           <button className="icon-button lg:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu">{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         </div>
       </nav>
       {menuOpen && (
         <div className="border-t border-white/10 bg-ink px-4 py-4 lg:hidden">
-          {[...links, "Admin"].map((link) => <a className="block rounded-lg px-3 py-3 text-white/80 hover:bg-white/10" href={`#${link.toLowerCase()}`} key={link} onClick={() => setMenuOpen(false)}>{link}</a>)}
+          {links.map((link) => <a className="block rounded-lg px-3 py-3 text-white/80 hover:bg-white/10" href={`/#${link.toLowerCase()}`} key={link} onClick={() => { goHome(`#${link.toLowerCase()}`); setMenuOpen(false); }}>{link}</a>)}
+          {session?.user?.role === "admin" && <a className="block rounded-lg px-3 py-3 text-champagne hover:bg-white/10" href="/admin" onClick={(event) => { event.preventDefault(); navigate("/admin"); setMenuOpen(false); }}>Dashboard</a>}
         </div>
       )}
     </header>
@@ -343,7 +367,7 @@ function Hero() {
         </div>
         <div className="animate-float rounded-[2rem] border border-white/16 bg-white/12 p-5 text-white shadow-glow backdrop-blur-xl">
           <div className="grid grid-cols-3 gap-3 text-center">{[["Live", "Sync"], ["JWT", "Admin"], ["PDF", "Ready"]].map(([value, label]) => <div className="rounded-2xl bg-white/10 p-4" key={label}><div className="font-display text-2xl font-semibold text-champagne">{value}</div><div className="mt-1 text-xs text-white/70">{label}</div></div>)}</div>
-          <div className="mt-4 rounded-2xl bg-ink/45 p-4"><p className="text-sm text-white/72">Admin demo</p><p className="mt-3 font-display text-2xl">admin@eliteeventhub.com</p><p className="mt-1 text-sm text-white/70">Password: AdminPass123</p></div>
+          <div className="mt-4 rounded-2xl bg-ink/45 p-4"><p className="text-sm text-white/72">Private operations</p><p className="mt-3 font-display text-2xl">Admin tools are separated</p><p className="mt-1 text-sm text-white/70">Only authenticated admins can open the dashboard.</p></div>
         </div>
       </div>
     </section>

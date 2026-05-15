@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import mongoose from "mongoose";
 import morgan from "morgan";
+import { connectDatabase, mongoUri } from "./db.js";
 import { authRouter } from "./routes/auth.js";
 import { bookingRouter } from "./routes/bookings.js";
 import { hallRouter } from "./routes/halls.js";
@@ -64,13 +64,13 @@ app.use((error, _request, response, _next) => {
 });
 
 async function start() {
-  if (process.env.MONGODB_URI) {
-    try {
-      await mongoose.connect(process.env.MONGODB_URI);
-      console.log("MongoDB connected");
-    } catch (error) {
-      console.warn("MongoDB connection failed; continuing with dummy data:", error.message);
-    }
+  try {
+    await connectDatabase();
+    console.log(`MongoDB connected at ${mongoUri}`);
+  } catch (error) {
+    console.error("MongoDB connection failed. Start MongoDB or update MONGODB_URI in .env.");
+    console.error(error.message);
+    process.exit(1);
   }
 
   app.listen(port, () => {
