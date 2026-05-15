@@ -15,6 +15,8 @@ html {
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.5;
+  background: #f8f5ef;
 }
 
 button,
@@ -56,20 +58,20 @@ select option {
 .field span {
   font-size: 0.85rem;
   font-weight: 650;
-  color: rgb(255 255 255 / 0.72);
+  color: rgb(255 255 255 / 0.9);
 }
 
 .light .field span,
 .field span {
-  color: rgb(248 245 239 / 0.72);
+  color: rgb(248 245 239 / 0.9);
 }
 
 section:not(.bg-ink) .field span {
-  color: rgb(11 15 20 / 0.62);
+  color: rgb(11 15 20 / 0.78);
 }
 
 .dark section:not(.bg-ink) .field span {
-  color: rgb(248 245 239 / 0.68);
+  color: rgb(248 245 239 / 0.86);
 }
 
 .input-wrap,
@@ -79,7 +81,7 @@ section:not(.bg-ink) .field span {
   width: 100%;
   border: 1px solid rgb(255 255 255 / 0.12);
   border-radius: 0.85rem;
-  background: rgb(255 255 255 / 0.08);
+  background: rgb(255 255 255 / 0.12);
   color: currentColor;
   outline: none;
 }
@@ -108,15 +110,55 @@ section:not(.bg-ink) .field input,
 section:not(.bg-ink) .field select,
 section:not(.bg-ink) .field textarea {
   border-color: rgb(11 15 20 / 0.12);
-  background: rgb(11 15 20 / 0.04);
+  background: rgb(255 255 255 / 0.85);
 }
 
 .dark section:not(.bg-ink) .input-wrap,
 .dark section:not(.bg-ink) .field input,
 .dark section:not(.bg-ink) .field select,
 .dark section:not(.bg-ink) .field textarea {
-  border-color: rgb(255 255 255 / 0.12);
-  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.18);
+  background: rgb(255 255 255 / 0.12);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgb(11 15 20 / 0.5);
+}
+
+.dark .field input::placeholder,
+.dark .field textarea::placeholder,
+.bg-ink .field input::placeholder,
+.bg-ink .field textarea::placeholder {
+  color: rgb(255 255 255 / 0.62);
+}
+
+.support-input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 0.1);
+  color: white;
+  outline: none;
+  padding: 0.75rem 0.85rem;
+}
+
+.support-input::placeholder {
+  color: rgb(255 255 255 / 0.68);
+}
+
+.support-input:focus,
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: #f4d7a1;
+  box-shadow: 0 0 0 3px rgb(244 215 161 / 0.18);
+}
+
+.dark article,
+.dark .shadow-soft {
+  color: #f8f5ef;
 }
 
 .calendar-cell {

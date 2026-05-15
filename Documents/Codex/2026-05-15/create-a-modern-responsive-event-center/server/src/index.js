@@ -11,6 +11,7 @@ import { hallRouter } from "./routes/halls.js";
 import { paymentRouter } from "./routes/payments.js";
 import { adminRouter } from "./routes/admin.js";
 import { eventsRouter } from "./routes/events.js";
+import { supportRouter } from "./routes/support.js";
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use("/api/bookings", bookingRouter);
 app.use("/api/payments", paymentRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api/support", supportRouter);
 
 app.use((error, _request, response, _next) => {
   console.error(error);

@@ -116,6 +116,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [halls, setHalls] = useState(fallbackHalls);
   const [bookings, setBookings] = useState([]);
+  const [supportMessages, setSupportMessages] = useState([]);
   const [overview, setOverview] = useState(null);
   const [query, setQuery] = useState("");
   const [capacity, setCapacity] = useState("all");
@@ -154,6 +155,7 @@ function App() {
       const message = JSON.parse(event.data);
       if (message.payload?.halls) setHalls(message.payload.halls);
       if (message.payload?.bookings && session?.user?.role === "admin") setBookings(message.payload.bookings);
+      if (message.payload?.supportMessages) setSupportMessages(message.payload.supportMessages);
       if (message.type !== "snapshot") setNotice(`${message.type.replace(".", " ")} updated just now`);
     };
     stream.onerror = () => setNotice("Live stream paused. Using API refresh.");
@@ -176,9 +178,14 @@ function App() {
 
   async function refreshAdminData() {
     try {
-      const [serverBookings, adminOverview] = await Promise.all([api("/bookings"), api("/admin/overview")]);
+      const [serverBookings, adminOverview, serverSupportMessages] = await Promise.all([
+        api("/bookings"),
+        api("/admin/overview"),
+        api("/support")
+      ]);
       setBookings(serverBookings);
       setOverview(adminOverview);
+      setSupportMessages(serverSupportMessages);
     } catch (error) {
       setNotice(error.message);
     }
@@ -284,13 +291,28 @@ function App() {
     }
   };
 
+  const sendSupportMessage = async (message) => {
+    const supportMessage = await api("/support", { method: "POST", body: JSON.stringify(message) });
+    setSupportMessages((current) => [supportMessage, ...current]);
+    return supportMessage;
+  };
+
+  const resolveSupportMessage = async (id) => {
+    try {
+      await api(`/support/${id}/resolve`, { method: "PATCH" });
+      refreshAdminData();
+    } catch (error) {
+      setNotice(error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-pearl text-ink transition-colors duration-500 dark:bg-ink dark:text-pearl">
       <Nav dark={dark} setDark={setDark} menuOpen={menuOpen} setMenuOpen={setMenuOpen} session={session} logout={logout} navigate={navigate} path={path} />
       <LiveNotice notice={notice} />
       {path === "/admin" ? (
         <main>
-          <AdminGate session={session} login={login} logout={logout} bookings={bookings} totalRevenue={totalRevenue} overview={overview} updateBooking={updateBooking} halls={halls} addHall={addHall} deleteHall={deleteHall} />
+          <AdminGate session={session} login={login} logout={logout} bookings={bookings} totalRevenue={totalRevenue} overview={overview} updateBooking={updateBooking} halls={halls} addHall={addHall} deleteHall={deleteHall} supportMessages={supportMessages} resolveSupportMessage={resolveSupportMessage} />
         </main>
       ) : (
         <main>
@@ -304,7 +326,7 @@ function App() {
           <Contact />
         </main>
       )}
-      {path !== "/admin" && <SupportWidget />}
+      {path !== "/admin" && <SupportWidget sendSupportMessage={sendSupportMessage} />}
       <Footer />
     </div>
   );
@@ -359,23 +381,29 @@ function Hero() {
         <div className="max-w-3xl animate-reveal text-white">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm backdrop-blur"><BadgeCheck size={16} className="text-champagne" /> Real-time venues, secure admin, instant receipts</span>
           <h1 className="mt-6 font-display text-5xl font-semibold leading-[1.02] sm:text-6xl lg:text-7xl">Book unforgettable halls with a concierge-grade experience.</h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/78">Search live availability, reserve a hall, simulate payment, download a receipt, and let admins approve reservations from a protected dashboard.</p>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/90">Search live availability, reserve a hall, simulate payment, download a receipt, and let admins approve reservations from a protected dashboard.</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a href="#venues" className="inline-flex items-center justify-center gap-2 rounded-full bg-champagne px-6 py-3 font-semibold text-ink shadow-glow transition hover:translate-y-[-2px]">Explore venues <ArrowRight size={18} /></a>
             <a href="#booking" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-6 py-3 font-semibold text-white backdrop-blur transition hover:bg-white/18">Start booking</a>
           </div>
         </div>
         <div className="animate-float rounded-[2rem] border border-white/16 bg-white/12 p-5 text-white shadow-glow backdrop-blur-xl">
-          <div className="grid grid-cols-3 gap-3 text-center">{[["Live", "Sync"], ["JWT", "Admin"], ["PDF", "Ready"]].map(([value, label]) => <div className="rounded-2xl bg-white/10 p-4" key={label}><div className="font-display text-2xl font-semibold text-champagne">{value}</div><div className="mt-1 text-xs text-white/70">{label}</div></div>)}</div>
-          <div className="mt-4 rounded-2xl bg-ink/45 p-4"><p className="text-sm text-white/72">Private operations</p><p className="mt-3 font-display text-2xl">Admin tools are separated</p><p className="mt-1 text-sm text-white/70">Only authenticated admins can open the dashboard.</p></div>
+          <div className="grid grid-cols-3 gap-3 text-center">{[["Live", "Sync"], ["JWT", "Admin"], ["PDF", "Ready"]].map(([value, label]) => <div className="rounded-2xl bg-white/14 p-4" key={label}><div className="font-display text-2xl font-semibold text-champagne">{value}</div><div className="mt-1 text-xs text-white/82">{label}</div></div>)}</div>
+          <div className="mt-4 rounded-2xl bg-ink/65 p-4"><p className="text-sm text-white/82">Private operations</p><p className="mt-3 font-display text-2xl">Admin tools are separated</p><p className="mt-1 text-sm text-white/84">Only authenticated admins can open the dashboard.</p></div>
         </div>
       </div>
     </section>
   );
 }
 
-function SectionTitle({ eyebrow, title, body }) {
-  return <div className="mx-auto max-w-3xl text-center"><p className="text-sm font-semibold uppercase tracking-[0.22em] text-bronze">{eyebrow}</p><h2 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">{title}</h2>{body && <p className="mt-4 text-base leading-7 text-ink/65 dark:text-pearl/68">{body}</p>}</div>;
+function SectionTitle({ eyebrow, title, body, light = false }) {
+  return (
+    <div className="mx-auto max-w-3xl text-center">
+      <p className={`text-sm font-semibold uppercase tracking-[0.22em] ${light ? "text-champagne" : "text-bronze"}`}>{eyebrow}</p>
+      <h2 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">{title}</h2>
+      {body && <p className={`mt-4 text-base leading-7 ${light ? "text-white/82" : "text-ink/78 dark:text-pearl/82"}`}>{body}</p>}
+    </div>
+  );
 }
 
 function Venues({ filteredHalls, query, setQuery, capacity, setCapacity, setSelectedHall }) {
@@ -399,7 +427,7 @@ function VenueCard({ hall, setSelectedHall }) {
       <div className="relative h-56 overflow-hidden"><img className="h-full w-full object-cover transition duration-700 group-hover:scale-110" src={hall.imageUrl} alt={hall.name} /><span className="absolute left-4 top-4 rounded-full bg-ink/70 px-3 py-1 text-xs font-semibold text-white backdrop-blur">{hall.availabilityStatus}</span></div>
       <div className="p-5">
         <h3 className="font-display text-2xl font-semibold">{hall.name}</h3>
-        <div className="mt-3 space-y-2 text-sm text-ink/66 dark:text-pearl/68"><p className="flex items-center gap-2"><Users size={16} /> {hall.capacity} guests</p><p className="flex items-center gap-2"><MapPin size={16} /> {hall.location}</p><p className="font-semibold text-bronze">{money(hall.pricePerDay)} / day</p></div>
+        <div className="mt-3 space-y-2 text-sm text-ink/78 dark:text-pearl/84"><p className="flex items-center gap-2"><Users size={16} /> {hall.capacity} guests</p><p className="flex items-center gap-2"><MapPin size={16} /> {hall.location}</p><p className="font-semibold text-bronze">{money(hall.pricePerDay)} / day</p></div>
         <div className="mt-4 flex flex-wrap gap-2">{(hall.features || []).map((feature) => <span className="rounded-full bg-bronze/10 px-3 py-1 text-xs text-bronze" key={feature}>{feature}</span>)}</div>
         <a href="#booking" onClick={() => setSelectedHall(hall.id)} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-bronze dark:bg-champagne dark:text-ink">Book Now <ArrowRight size={16} /></a>
       </div>
@@ -412,7 +440,7 @@ function Booking({ form, setForm, activeHall, halls, selectedHall, setSelectedHa
   const selectedDateBooked = activeHall.bookedDates?.includes(form.date);
   return (
     <section id="booking" className="section bg-ink text-white">
-      <SectionTitle eyebrow="Booking" title="Reserve, pay, and receive confirmation" body="This form posts to the backend, updates availability in real time, creates a demo payment, and unlocks a receipt download." />
+      <SectionTitle light eyebrow="Booking" title="Reserve, pay, and receive confirmation" body="This form posts to the backend, updates availability in real time, creates a demo payment, and unlocks a receipt download." />
       <div className="mx-auto mt-10 grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_.78fr] lg:px-8">
         <form onSubmit={submitBooking} className="rounded-2xl border border-white/10 bg-white/8 p-5 shadow-glow backdrop-blur">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -426,13 +454,13 @@ function Booking({ form, setForm, activeHall, halls, selectedHall, setSelectedHa
             <Field label="Guests" type="number" value={form.guests} onChange={(value) => setForm({ ...form, guests: value })} required />
           </div>
           {selectedDateBooked && <p className="mt-4 rounded-xl bg-wine/25 p-3 text-sm text-white">That date is already booked for this hall. Pick another date.</p>}
-          <div className="mt-5"><span className="text-sm font-semibold text-white/76">Services</span><div className="mt-3 grid gap-2 sm:grid-cols-3">{services.map((service) => <button type="button" key={service} onClick={() => toggleService(service)} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${form.services.includes(service) ? "border-champagne bg-champagne text-ink" : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"}`}>{service}</button>)}</div></div>
+          <div className="mt-5"><span className="text-sm font-semibold text-white/90">Services</span><div className="mt-3 grid gap-2 sm:grid-cols-3">{services.map((service) => <button type="button" key={service} onClick={() => toggleService(service)} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${form.services.includes(service) ? "border-champagne bg-champagne text-ink" : "border-white/20 bg-white/10 text-white/90 hover:bg-white/16"}`}>{service}</button>)}</div></div>
           <label className="field mt-5"><span>Event details</span><textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows="4" placeholder="Tell us about seating, styling, catering, and special requests." /></label>
           <button disabled={selectedDateBooked} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-champagne px-5 py-3 font-semibold text-ink transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50"><CreditCard size={18} /> Book and pay now</button>
         </form>
         <aside className="space-y-5">
-          <div className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur"><img className="h-52 w-full rounded-xl object-cover" src={activeHall.imageUrl} alt={activeHall.name} /><h3 className="mt-4 font-display text-3xl font-semibold">{activeHall.name}</h3><p className="mt-2 text-white/68">{activeHall.location}</p><div className="mt-4 flex items-center justify-between rounded-xl bg-white/8 p-4"><span>Total today</span><strong className="text-champagne">{money(activeHall.pricePerDay)}</strong></div><div className="mt-4 flex flex-wrap gap-2">{(activeHall.features || []).map((feature) => <span className="rounded-full bg-white/10 px-3 py-1 text-xs" key={feature}>{feature}</span>)}</div></div>
-          {confirmation && <div className="rounded-2xl border border-sage/40 bg-sage/20 p-5"><div className="flex items-center gap-3 text-sage"><ShieldCheck /> Booking confirmed</div><p className="mt-3 text-sm text-white/78">Reservation {confirmation.id} is paid and queued for admin approval, reminders, and email confirmation.</p><a className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-ink" href={confirmation.receiptUrl}><Download size={16} /> Download receipt</a></div>}
+          <div className="rounded-2xl border border-white/14 bg-white/10 p-5 backdrop-blur"><img className="h-52 w-full rounded-xl object-cover" src={activeHall.imageUrl} alt={activeHall.name} /><h3 className="mt-4 font-display text-3xl font-semibold">{activeHall.name}</h3><p className="mt-2 text-white/86">{activeHall.location}</p><div className="mt-4 flex items-center justify-between rounded-xl bg-white/12 p-4"><span>Total today</span><strong className="text-champagne">{money(activeHall.pricePerDay)}</strong></div><div className="mt-4 flex flex-wrap gap-2">{(activeHall.features || []).map((feature) => <span className="rounded-full bg-white/14 px-3 py-1 text-xs text-white/90" key={feature}>{feature}</span>)}</div></div>
+          {confirmation && <div className="rounded-2xl border border-sage/40 bg-sage/25 p-5"><div className="flex items-center gap-3 text-white"><ShieldCheck className="text-sage" /> Booking confirmed</div><p className="mt-3 text-sm text-white/90">Reservation {confirmation.id} is paid and queued for admin approval, reminders, and email confirmation.</p><a className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-ink" href={confirmation.receiptUrl}><Download size={16} /> Download receipt</a></div>}
         </aside>
       </div>
     </section>
@@ -461,15 +489,15 @@ function Gallery() {
 }
 
 function Pricing() {
-  return <section id="pricing" className="section"><SectionTitle eyebrow="Pricing" title="Packages for every event type" /><div className="mx-auto mt-10 grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">{packages.map(([name, body, price, perks]) => <article className="rounded-2xl border border-ink/10 bg-white p-6 shadow-soft transition hover:-translate-y-1 dark:border-white/10 dark:bg-white/8" key={name}><h3 className="font-display text-2xl font-semibold">{name}</h3><p className="mt-3 text-sm leading-6 text-ink/62 dark:text-pearl/64">{body}</p><p className="mt-5 text-2xl font-bold text-bronze">{money(price)}</p><div className="mt-5 space-y-3">{perks.map((perk) => <p className="flex items-center gap-2 text-sm" key={perk}><Check size={16} className="text-sage" />{perk}</p>)}</div></article>)}</div></section>;
+  return <section id="pricing" className="section"><SectionTitle eyebrow="Pricing" title="Packages for every event type" /><div className="mx-auto mt-10 grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">{packages.map(([name, body, price, perks]) => <article className="rounded-2xl border border-ink/10 bg-white p-6 shadow-soft transition hover:-translate-y-1 dark:border-white/10 dark:bg-white/10" key={name}><h3 className="font-display text-2xl font-semibold">{name}</h3><p className="mt-3 text-sm leading-6 text-ink/78 dark:text-pearl/84">{body}</p><p className="mt-5 text-2xl font-bold text-bronze">{money(price)}</p><div className="mt-5 space-y-3">{perks.map((perk) => <p className="flex items-center gap-2 text-sm text-ink/82 dark:text-pearl/88" key={perk}><Check size={16} className="text-sage" />{perk}</p>)}</div></article>)}</div></section>;
 }
 
 function Testimonials() {
-  return <section id="about" className="section bg-ink text-white"><SectionTitle eyebrow="Reviews" title="Trusted by hosts, planners, and teams" /><div className="mx-auto mt-10 grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">{reviews.map(([quote, name, role]) => <figure className="rounded-2xl border border-white/10 bg-white/8 p-6 backdrop-blur" key={name}><div className="flex gap-1 text-champagne">{Array.from({ length: 5 }).map((_, index) => <Star fill="currentColor" size={16} key={index} />)}</div><blockquote className="mt-5 leading-7 text-white/78">"{quote}"</blockquote><figcaption className="mt-5 font-semibold">{name}<span className="block text-sm font-normal text-white/50">{role}</span></figcaption></figure>)}</div></section>;
+  return <section id="about" className="section bg-ink text-white"><SectionTitle light eyebrow="Reviews" title="Trusted by hosts, planners, and teams" /><div className="mx-auto mt-10 grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-3 lg:px-8">{reviews.map(([quote, name, role]) => <figure className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur" key={name}><div className="flex gap-1 text-champagne">{Array.from({ length: 5 }).map((_, index) => <Star fill="currentColor" size={16} key={index} />)}</div><blockquote className="mt-5 leading-7 text-white/88">"{quote}"</blockquote><figcaption className="mt-5 font-semibold">{name}<span className="block text-sm font-normal text-white/72">{role}</span></figcaption></figure>)}</div></section>;
 }
 
-function AdminGate({ session, login, logout, bookings, totalRevenue, overview, updateBooking, halls, addHall, deleteHall }) {
-  if (session?.user?.role === "admin") return <AdminDashboard session={session} logout={logout} bookings={bookings} totalRevenue={totalRevenue} overview={overview} updateBooking={updateBooking} halls={halls} addHall={addHall} deleteHall={deleteHall} />;
+function AdminGate({ session, login, logout, bookings, totalRevenue, overview, updateBooking, halls, addHall, deleteHall, supportMessages, resolveSupportMessage }) {
+  if (session?.user?.role === "admin") return <AdminDashboard session={session} logout={logout} bookings={bookings} totalRevenue={totalRevenue} overview={overview} updateBooking={updateBooking} halls={halls} addHall={addHall} deleteHall={deleteHall} supportMessages={supportMessages} resolveSupportMessage={resolveSupportMessage} />;
   return <AdminLogin login={login} session={session} />;
 }
 
@@ -488,17 +516,17 @@ function AdminLogin({ login, session }) {
   );
 }
 
-function AdminDashboard({ session, logout, bookings, totalRevenue, overview, updateBooking, halls, addHall, deleteHall }) {
+function AdminDashboard({ session, logout, bookings, totalRevenue, overview, updateBooking, halls, addHall, deleteHall, supportMessages, resolveSupportMessage }) {
   const [draftHall, setDraftHall] = useState({ name: "", capacity: 100, pricePerDay: 500000, location: "", features: "AC, Parking, WiFi", imageUrl: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=85", availabilityStatus: "Available" });
   return (
     <section id="admin" className="section">
       <SectionTitle eyebrow="Admin" title="Protected operations dashboard" body={`Signed in as ${session.user.email}. Manage bookings, halls, approvals, payments, alerts, and revenue from a secured console.`} />
       <div className="mx-auto mt-10 grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[.72fr_1.28fr] lg:px-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><Metric icon={<BarChart3 />} label="Revenue" value={money(overview?.metrics?.revenue || totalRevenue)} /><Metric icon={<CalendarDays />} label="Bookings" value={overview?.metrics?.bookings || bookings.length} /><Metric icon={<Bell />} label="Pending reservations" value={overview?.metrics?.pendingReservations || 0} /><Metric icon={<Wifi />} label="Live support" value="Online" /><button onClick={logout} className="rounded-xl border border-ink/10 bg-white px-4 py-3 font-semibold shadow-soft dark:border-white/10 dark:bg-white/8">Logout admin</button></div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1"><Metric icon={<BarChart3 />} label="Revenue" value={money(overview?.metrics?.revenue || totalRevenue)} /><Metric icon={<CalendarDays />} label="Bookings" value={overview?.metrics?.bookings || bookings.length} /><Metric icon={<Bell />} label="Open support" value={overview?.metrics?.openSupport || supportMessages.filter((item) => item.status === "Open").length} /><Metric icon={<Wifi />} label="Live support" value="Online" /><button onClick={logout} className="rounded-xl border border-ink/10 bg-white px-4 py-3 font-semibold shadow-soft dark:border-white/10 dark:bg-white/8">Logout admin</button></div>
         <div className="space-y-6">
           <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-soft dark:border-white/10 dark:bg-white/8">
             <div className="flex items-center justify-between border-b border-ink/10 p-5 dark:border-white/10"><div className="flex items-center gap-3"><LayoutDashboard className="text-bronze" /><h3 className="font-display text-2xl font-semibold">Reservations</h3></div></div>
-            <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-ink/5 text-ink/58 dark:bg-white/8 dark:text-pearl/60"><tr><th className="p-4">Booking</th><th className="p-4">Customer</th><th className="p-4">Event</th><th className="p-4">Payment</th><th className="p-4">Status</th><th className="p-4">Actions</th></tr></thead><tbody>{bookings.map((booking) => <tr className="border-t border-ink/8 dark:border-white/8" key={booking.id}><td className="p-4 font-semibold">{booking.id}<span className="block text-xs font-normal text-ink/45 dark:text-pearl/45">{booking.date} {booking.time}</span></td><td className="p-4">{booking.customerName}<span className="block text-xs text-ink/45 dark:text-pearl/45">{booking.customerEmail}</span></td><td className="p-4">{booking.eventType}</td><td className="p-4">{booking.paymentStatus}</td><td className="p-4"><span className="rounded-full bg-bronze/12 px-3 py-1 text-xs font-semibold text-bronze">{booking.status}</span></td><td className="p-4"><div className="flex gap-2"><button onClick={() => updateBooking(booking.id, "Approved")} className="rounded-lg bg-sage px-3 py-2 text-xs font-semibold text-white">Approve</button><button onClick={() => updateBooking(booking.id, "Rejected")} className="rounded-lg bg-wine px-3 py-2 text-xs font-semibold text-white">Reject</button></div></td></tr>)}</tbody></table></div>
+            <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-ink/5 text-ink/72 dark:bg-white/10 dark:text-pearl/82"><tr><th className="p-4">Booking</th><th className="p-4">Customer</th><th className="p-4">Event</th><th className="p-4">Payment</th><th className="p-4">Status</th><th className="p-4">Actions</th></tr></thead><tbody>{bookings.map((booking) => <tr className="border-t border-ink/8 dark:border-white/8" key={booking.id}><td className="p-4 font-semibold">{booking.id}<span className="block text-xs font-normal text-ink/66 dark:text-pearl/70">{booking.date} {booking.time}</span></td><td className="p-4">{booking.customerName}<span className="block text-xs text-ink/66 dark:text-pearl/70">{booking.customerEmail}</span></td><td className="p-4">{booking.eventType}</td><td className="p-4">{booking.paymentStatus}</td><td className="p-4"><span className="rounded-full bg-bronze/12 px-3 py-1 text-xs font-semibold text-bronze">{booking.status}</span></td><td className="p-4"><div className="flex gap-2"><button onClick={() => updateBooking(booking.id, "Approved")} className="rounded-lg bg-sage px-3 py-2 text-xs font-semibold text-white">Approve</button><button onClick={() => updateBooking(booking.id, "Rejected")} className="rounded-lg bg-wine px-3 py-2 text-xs font-semibold text-white">Reject</button></div></td></tr>)}</tbody></table></div>
           </div>
           <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
             <h3 className="font-display text-2xl font-semibold">Hall manager</h3>
@@ -512,6 +540,29 @@ function AdminDashboard({ session, logout, bookings, totalRevenue, overview, upd
             </form>
             <div className="mt-5 grid gap-3">{halls.map((hall) => <div className="flex items-center justify-between rounded-xl bg-ink/5 p-3 dark:bg-white/8" key={hall.id}><span>{hall.name}<small className="block text-ink/50 dark:text-pearl/50">{money(hall.pricePerDay)} · {hall.capacity} guests</small></span><button onClick={() => deleteHall(hall.id)} className="grid h-9 w-9 place-items-center rounded-lg bg-wine text-white" aria-label="Delete hall"><Trash2 size={15} /></button></div>)}</div>
           </div>
+          <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8">
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="font-display text-2xl font-semibold">Support inbox</h3>
+              <span className="rounded-full bg-bronze/12 px-3 py-1 text-xs font-semibold text-bronze">{supportMessages.filter((item) => item.status === "Open").length} open</span>
+            </div>
+            <div className="mt-5 grid gap-3">
+              {supportMessages.length === 0 && <p className="rounded-xl bg-ink/5 p-4 text-sm text-ink/72 dark:bg-white/10 dark:text-pearl/82">No support messages yet.</p>}
+              {supportMessages.slice(0, 6).map((item) => (
+                <div className="rounded-xl border border-ink/10 bg-ink/[0.03] p-4 dark:border-white/10 dark:bg-white/8" key={item.id}>
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row">
+                    <div>
+                      <p className="font-semibold">{item.name || "Guest"} <span className="text-sm font-normal text-ink/64 dark:text-pearl/72">{item.email}</span></p>
+                      <p className="mt-2 text-sm leading-6 text-ink/78 dark:text-pearl/84">{item.message}</p>
+                      <p className="mt-2 rounded-lg bg-sage/12 p-3 text-sm text-ink/78 dark:text-pearl/84">Auto reply: {item.reply}</p>
+                    </div>
+                    <button onClick={() => resolveSupportMessage(item.id)} disabled={item.status === "Resolved"} className="h-fit rounded-lg bg-sage px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+                      {item.status === "Resolved" ? "Resolved" : "Resolve"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -519,7 +570,7 @@ function AdminDashboard({ session, logout, bookings, totalRevenue, overview, upd
 }
 
 function Metric({ icon, label, value }) {
-  return <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/8"><div className="text-bronze">{icon}</div><p className="mt-5 text-sm text-ink/56 dark:text-pearl/56">{label}</p><p className="mt-1 font-display text-3xl font-semibold">{value}</p></div>;
+  return <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-soft dark:border-white/10 dark:bg-white/10"><div className="text-bronze">{icon}</div><p className="mt-5 text-sm font-semibold text-ink/72 dark:text-pearl/80">{label}</p><p className="mt-1 font-display text-3xl font-semibold">{value}</p></div>;
 }
 
 function Contact() {
@@ -527,19 +578,81 @@ function Contact() {
     <section id="contact" className="section">
       <SectionTitle eyebrow="Contact" title="Plan your next elite event" />
       <div className="mx-auto mt-10 grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:px-8">
-        <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-white/8"><div className="grid gap-4"><Field label="Name" value="" onChange={() => {}} placeholder="Your name" /><Field label="Email" value="" onChange={() => {}} placeholder="you@example.com" /><label className="field"><span>Message</span><textarea rows="5" placeholder="Tell us what you want to host." /></label><button className="rounded-xl bg-bronze px-5 py-3 font-semibold text-white">Send message</button></div><div className="mt-6 grid gap-3 text-sm text-ink/65 dark:text-pearl/65"><p className="flex items-center gap-2"><Phone size={16} /> +234 800 555 0199</p><p className="flex items-center gap-2"><Mail size={16} /> bookings@eliteeventhub.com</p><p className="flex items-center gap-2"><MapPin size={16} /> 21 Admiralty Way, Lekki, Lagos</p></div></div>
+        <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-soft dark:border-white/10 dark:bg-white/10"><div className="grid gap-4"><Field label="Name" value="" onChange={() => {}} placeholder="Your name" /><Field label="Email" value="" onChange={() => {}} placeholder="you@example.com" /><label className="field"><span>Message</span><textarea rows="5" placeholder="Tell us what you want to host." /></label><button className="rounded-xl bg-bronze px-5 py-3 font-semibold text-white">Send message</button></div><div className="mt-6 grid gap-3 text-sm text-ink/78 dark:text-pearl/84"><p className="flex items-center gap-2"><Phone size={16} /> +234 800 555 0199</p><p className="flex items-center gap-2"><Mail size={16} /> bookings@eliteeventhub.com</p><p className="flex items-center gap-2"><MapPin size={16} /> 21 Admiralty Way, Lekki, Lagos</p></div></div>
         <div className="overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-soft dark:border-white/10 dark:bg-white/8"><iframe title="Elite Event Hub map" className="h-full min-h-[420px] w-full" loading="lazy" src="https://www.google.com/maps?q=Lekki%20Phase%201%20Lagos&output=embed" /></div>
       </div>
     </section>
   );
 }
 
-function SupportWidget() {
-  return <div className="fixed bottom-5 right-5 z-40 hidden w-[calc(100vw-2.5rem)] max-w-sm rounded-2xl border border-white/15 bg-ink/88 p-4 text-white shadow-glow backdrop-blur md:block"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-champagne text-ink"><Headphones size={19} /></span><div><p className="font-semibold">Live support</p><p className="text-xs text-white/58">Chatbot triage and human handoff</p></div></div><div className="mt-3 rounded-xl bg-white/8 p-3 text-sm text-white/72">Hi, I can help compare venues, check dates, or generate an invoice.</div></div>;
+function SupportWidget({ sendSupportMessage }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [thread, setThread] = useState([
+    { from: "support", text: "Welcome to Elite Event Hub. Ask about halls, pricing, dates, payment, or receipts." }
+  ]);
+  const [sending, setSending] = useState(false);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!message.trim()) return;
+    const userText = message.trim();
+    setThread((current) => [...current, { from: "you", text: userText }]);
+    setMessage("");
+    setSending(true);
+    try {
+      const response = await sendSupportMessage({ name, email, message: userText });
+      setThread((current) => [...current, { from: "support", text: response.reply }]);
+    } catch (error) {
+      setThread((current) => [...current, { from: "support", text: error.message || "Support is temporarily unavailable." }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-5 right-5 z-40 w-[calc(100vw-2rem)] max-w-sm text-white">
+      {open && (
+        <div className="mb-3 overflow-hidden rounded-2xl border border-white/18 bg-ink shadow-glow">
+          <div className="flex items-center justify-between bg-white/8 p-4">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-champagne text-ink"><Headphones size={19} /></span>
+              <div><p className="font-semibold">Live support</p><p className="text-xs text-white/76">Connected to admin inbox</p></div>
+            </div>
+            <button onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-white/10" aria-label="Close support"><X size={16} /></button>
+          </div>
+          <div className="max-h-72 space-y-3 overflow-y-auto p-4">
+            {thread.map((item, index) => (
+              <div className={`rounded-2xl px-4 py-3 text-sm leading-6 ${item.from === "you" ? "ml-8 bg-champagne text-ink" : "mr-8 bg-white/10 text-white/90"}`} key={`${item.from}-${index}`}>
+                {item.text}
+              </div>
+            ))}
+          </div>
+          <form onSubmit={submit} className="grid gap-2 border-t border-white/10 p-4">
+            <div className="grid grid-cols-2 gap-2">
+              <input className="support-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Name" />
+              <input className="support-input" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" type="email" />
+            </div>
+            <div className="flex gap-2">
+              <input className="support-input" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Type your question..." />
+              <button disabled={sending} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-champagne text-ink disabled:opacity-60" aria-label="Send support message">
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      <button onClick={() => setOpen(!open)} className="ml-auto flex items-center gap-3 rounded-full bg-champagne px-5 py-3 font-semibold text-ink shadow-glow">
+        <Headphones size={18} /> {open ? "Close chat" : "Chat with us"}
+      </button>
+    </div>
+  );
 }
 
 function Footer() {
-  return <footer className="border-t border-ink/10 px-4 py-8 text-center text-sm text-ink/58 dark:border-white/10 dark:text-pearl/55"><p>Elite Event Hub © 2026. Premium booking, secure payments, automated confirmations, and admin operations.</p></footer>;
+  return <footer className="border-t border-ink/10 px-4 py-8 text-center text-sm text-ink/72 dark:border-white/10 dark:text-pearl/78"><p>Elite Event Hub © 2026. Premium booking, secure payments, automated confirmations, and admin operations.</p></footer>;
 }
 
 createRoot(document.getElementById("root")).render(<App />);
